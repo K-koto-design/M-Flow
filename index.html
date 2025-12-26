@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Cloud - Стриминг</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root { --primary: #1DB954; --bg: #000; --card: #181818; --text: #fff; --text-dim: #b3b3b3; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; overflow-x: hidden; }
+        .search-container { padding: 15px 20px; position: sticky; top: 0; background: var(--bg); z-index: 50; }
+        #search-input { width: 100%; padding: 12px; border-radius: 25px; border: none; background: #242424; color: white; box-sizing: border-box; font-size: 16px; outline: none; }
+        #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .auth-box { background: var(--card); padding: 40px; border-radius: 12px; width: 90%; max-width: 350px; text-align: center; }
+        .auth-box input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #333; background: #282828; color: white; box-sizing: border-box; }
+        .track-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; padding: 0 20px; }
+        .track-card { background: #181818; padding: 12px; border-radius: 8px; cursor: pointer; }
+        .track-card img { width: 100%; aspect-ratio: 1; border-radius: 6px; object-fit: cover; }
+        .track-title { font-weight: bold; font-size: 14px; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .track-artist { color: var(--text-dim); font-size: 12px; }
+        #player-ui { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, #333, #000); z-index: 500; display: none; flex-direction: column; align-items: center; padding: 40px 20px; box-sizing: border-box; }
+        .main-cover { width: 280px; height: 280px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .lyrics-container { display: none; height: 300px; overflow-y: auto; width: 100%; text-align: center; margin-top: 20px; scroll-behavior: smooth; }
+        .lyrics-container::-webkit-scrollbar { display: none; }
+        .lyric-line { font-size: 20px; padding: 8px 0; color: rgba(255,255,255,0.3); transition: 0.3s; }
+        .lyric-line.active { color: #fff; transform: scale(1.1); font-weight: bold; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: #000; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #282828; z-index: 100; }
+        .nav-item { cursor: pointer; color: var(--text-dim); text-align: center; font-size: 12px; }
+        .nav-item.active { color: var(--primary); }
+        .btn { background: var(--primary); border: none; padding: 12px 25px; border-radius: 25px; color: white; font-weight: bold; cursor: pointer; }
+        .btn-text { background: none; border: 1px solid white; color: white; padding: 8px 15px; border-radius: 20px; cursor: pointer; }
+        .screen { display: none; padding-bottom: 100px; }
+        .screen.active { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <div class="auth-box">
+            <h2 id="auth-title">Придумайте Логин</h2>
+            <input type="text" id="auth-username" placeholder="Ваш логин">
+            <input type="password" id="auth-password" placeholder="Пароль">
+            <button class="btn" style="width:100%" onclick="handleAuth()" id="auth-btn">Войти</button>
+            <p id="auth-toggle" style="font-size: 12px; margin-top: 15px; cursor: pointer; color: var(--text-dim);" onclick="toggleAuthMode()">Нет аккаунта? Зарегистрироваться</p>
+        </div>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="Поиск треков или артистов..." oninput="filterTracks()">
+    </div>
+
+    <div id="screen-home" class="screen active">
+        <div class="track-grid" id="track-list"></div>
+    </div>
+
+    <div id="screen-profile" class="screen" style="padding: 20px;">
+        <h1>Мой аккаунт</h1>
+        <div class="track-card">
+            <p>Логин: <b id="user-display"></b></p>
+            <p>Статус: <span id="status-label">Обычный</span></p>
+            <button class="btn" onclick="buyPremium()">Купить Premium 💎</button>
+            <button class="btn-text" onclick="firebase.auth().signOut()" style="margin-top: 20px;">Выйти</button>
+        </div>
+    </div>
+
+    <div id="player-ui">
+        <div style="width: 100%; display: flex; justify-content: space-between;">
+            <button class="btn-text" onclick="closePlayer()">Закрыть</button>
+            <button class="btn-text" onclick="toggleLyricsView()">Текст</button>
+        </div>
+        <img id="player-cover" class="main-cover" src="" style="margin-top: 30px;">
+        <div id="player-lyrics" class="lyrics-container"></div>
+        <div style="margin-top: auto; width: 100%; text-align: center;">
+            <h2 id="player-title" style="margin-bottom: 5px;"></h2>
+            <p id="player-artist" style="color: var(--text-dim); margin-top: 0;"></p>
+            <audio id="main-audio" controls style="width: 100%; margin-bottom: 20px;"></audio>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-item active" onclick="showScreen('screen-home', this)">🏠<br>Главная</div>
+        <div class="nav-item" onclick="showScreen('screen-profile', this)">👤<br>Профиль</div>
+        <div class="nav-item" onclick="window.open('admin.html', '_blank')">📤<br>Админка</div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXsLSl_6HNpLm3TqPTjkTRqo62gb2j968",
+            authDomain: "m-flow-65777.firebaseapp.com",
+            projectId: "m-flow-65777",
+            storageBucket: "m-flow-65777.firebasestorage.app",
+            messagingSenderId: "598827175490",
+            appId: "1:598827175490:web:26618e76510f296f7267db",
+            measurementId: "G-MF2YM53NQS"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let allTracks = [];
+        let isSignUpMode = false;
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            document.getElementById('auth-title').innerText = isSignUpMode ? "Регистрация" : "Вход по логину";
+            document.getElementById('auth-btn').innerText = isSignUpMode ? "Создать" : "Войти";
+        }
+
+        async function handleAuth() {
+            const user = document.getElementById('auth-username').value.trim();
+            const pass = document.getElementById('auth-password').value;
+            if(!user || !pass) return alert("Заполни все!");
+            const fakeEmail = `${user.toLowerCase()}@music.app`;
+            try {
+                if(isSignUpMode) {
+                    const res = await auth.createUserWithEmailAndPassword(fakeEmail, pass);
+                    await db.collection('users').doc(res.user.uid).set({ username: user, premium: false });
+                } else {
+                    await auth.signInWithEmailAndPassword(fakeEmail, pass);
+                }
+            } catch(e) { alert("Ошибка: " + e.message); }
+        }
+
+        auth.onAuthStateChanged(async (user) => {
+            if(user) {
+                document.getElementById('auth-screen').style.display = 'none';
+                const doc = await db.collection('users').doc(user.uid).get();
+                const data = doc.data();
+                document.getElementById('user-display').innerText = data ? data.username : user.email.split('@')[0];
+                if(data && data.premium) document.getElementById('status-label').innerText = "Premium 💎";
+                loadTracks();
+            } else {
+                document.getElementById('auth-screen').style.display = 'flex';
+            }
+        });
+
+        async function loadTracks() {
+            const snap = await db.collection('tracks').get();
+            allTracks = snap.docs.map(doc => doc.data());
+            renderTracks(allTracks);
+        }
+
+        function renderTracks(tracks) {
+            const list = document.getElementById('track-list');
+            list.innerHTML = tracks.map(t => `
+                <div class="track-card" onclick='playTrack(${JSON.stringify(t)})'>
+                    <img src="${t.coverUrl}">
+                    <div class="track-title">${t.title}</div>
+                    <div class="track-artist">${t.artist}</div>
+                </div>
+            `).join('');
+        }
+
+        function filterTracks() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtered = allTracks.filter(t => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query));
+            renderTracks(filtered);
+        }
+
+        const audio = document.getElementById('main-audio');
+        let currentLyrics = [];
+
+        function playTrack(t) {
+            document.getElementById('player-ui').style.display = 'flex';
+            document.getElementById('player-title').innerText = t.title;
+            document.getElementById('player-artist').innerText = t.artist;
+            document.getElementById('player-cover').src = t.coverUrl;
+            audio.src = t.audioUrl;
+            audio.play();
+            currentLyrics = t.lyrics || [];
+            document.getElementById('player-lyrics').innerHTML = currentLyrics.map(l => `<div class="lyric-line">${l.text}</div>`).join('');
+            document.getElementById('player-cover').style.display = 'block';
+            document.getElementById('player-lyrics').style.display = 'none';
+        }
+
+        audio.ontimeupdate = () => {
+            const time = Math.floor(audio.currentTime);
+            const lines = document.querySelectorAll('.lyric-line');
+            currentLyrics.forEach((l, i) => {
+                if(time >= l.t) {
+                    lines.forEach(el => el.classList.remove('active'));
+                    if(lines[i]) {
+                        lines[i].classList.add('active');
+                        if(document.getElementById('player-lyrics').style.display === 'block') {
+                            lines[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                }
+            });
+        };
+
+        function toggleLyricsView() {
+            const c = document.getElementById('player-cover');
+            const l = document.getElementById('player-lyrics');
+            const showL = c.style.display !== 'none';
+            c.style.display = showL ? 'none' : 'block';
+            l.style.display = showL ? 'block' : 'none';
+        }
+
+        function showScreen(id, el) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            el.classList.add('active');
+        }
+
+        function closePlayer() { document.getElementById('player-ui').style.display = 'none'; }
+
+        async function buyPremium() {
+            await db.collection('users').doc(auth.currentUser.uid).update({ premium: true });
+            alert("Premium активирован!");
+            location.reload();
+        }
+    </script>
+</body>
+</html>
