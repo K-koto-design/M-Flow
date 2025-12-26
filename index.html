@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>M-Flow Music</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -10,88 +10,267 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
     <style>
-        :root { --primary: #1DB954; --bg: #0b0b0b; --card: #1a1a1a; --text: #fff; --grey: #b3b3b3; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; overflow-x: hidden; }
-        
-        /* Авторизация */
-        #auth-screen { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; }
-        .auth-box { background: var(--card); padding: 30px; border-radius: 20px; width: 85%; max-width: 350px; text-align: center; }
-        input, textarea { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; box-sizing: border-box; outline: none; }
-        
-        /* Навигация */
-        .nav { position: fixed; bottom: 0; width: 100%; background: #000; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 1000; }
-        .nav-btn { background: none; border: none; color: #888; font-size: 11px; cursor: pointer; text-align: center; }
-        .nav-btn.active { color: var(--primary); }
+        :root {
+            --accent: #ff3366;
+            --bg: #ffffff;
+            --text: #000000;
+            --glass: rgba(255, 255, 255, 0.8);
+            --subtext: #8e8e93;
+        }
 
-        /* Страницы */
-        .page { display: none; padding: 20px 20px 100px; animation: fadeIn 0.3s; }
-        .page.active { display: block; }
-        @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- Авторизация --- */
+        #auth-screen {
+            position: fixed; inset: 0; background: #fff; z-index: 5000;
+            display: flex; align-items: center; justify-content: center; text-align: center;
+        }
+        .auth-card { width: 80%; max-width: 320px; }
+        .auth-card h1 { font-size: 28px; margin-bottom: 30px; }
+        .auth-input {
+            width: 100%; padding: 15px; margin: 10px 0; border: none;
+            background: #f2f2f7; border-radius: 12px; font-size: 16px; box-sizing: border-box;
+        }
+        .btn-main {
+            width: 100%; padding: 15px; border: none; background: #000;
+            color: #fff; border-radius: 12px; font-weight: 600; margin-top: 20px;
+        }
+
+        /* --- Шапка --- */
+        header {
+            padding: 20px; display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; background: var(--glass); backdrop-filter: blur(10px); z-index: 100;
+        }
+        .tabs { display: flex; gap: 20px; font-weight: 600; color: var(--subtext); }
+        .tab.active { color: var(--text); border-bottom: 2px solid var(--text); }
+
+        /* --- Контент --- */
+        .content { padding: 0 15px 120px; }
+        .section-title { font-size: 22px; font-weight: 700; margin: 25px 0 15px; }
         
-        .track-item { display: flex; align-items: center; background: var(--card); padding: 10px; border-radius: 12px; margin-bottom: 10px; cursor: pointer; }
-        .track-item img { width: 50px; height: 50px; border-radius: 6px; margin-right: 15px; object-fit: cover; }
+        /* Плейлисты сверху */
+        .horizontal-scroll { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; }
+        .horizontal-scroll::-webkit-scrollbar { display: none; }
+        .playlist-card { 
+            min-width: 140px; background: #f9f9f9; padding: 12px; border-radius: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .playlist-card img { width: 100%; border-radius: 10px; }
+        .playlist-card div { margin-top: 8px; font-weight: 600; font-size: 14px; }
+
+        /* Большой баннер артиста */
+        .artist-banner {
+            position: relative; width: 100%; border-radius: 20px; overflow: hidden; margin-top: 20px;
+        }
+        .artist-banner img { width: 100%; display: block; }
+        .banner-info {
+            position: absolute; bottom: 20px; left: 20px; color: #fff;
+        }
+        .btn-play-banner {
+            background: #fff; color: #000; padding: 10px 20px; border-radius: 20px;
+            font-weight: 700; border: none; margin-top: 10px; display: flex; align-items: center; gap: 8px;
+        }
+
+        /* --- Мини-плеер --- */
+        #mini-player {
+            position: fixed; bottom: 75px; left: 10px; right: 10px;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(20px);
+            padding: 10px 15px; border-radius: 15px; display: none;
+            align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 900;
+        }
+        #mini-player img { width: 45px; height: 45px; border-radius: 8px; margin-right: 12px; }
+        .mini-info { flex: 1; overflow: hidden; }
+        .mini-info b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+        .mini-info span { font-size: 12px; color: var(--subtext); }
+
+        /* --- Основной плеер (Экран) --- */
+        #full-player {
+            position: fixed; inset: 0; background: #fff; z-index: 2000;
+            display: none; flex-direction: column; transition: transform 0.4s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+        }
+        .player-bg {
+            position: absolute; inset: 0; z-index: -1; filter: blur(60px) brightness(0.8); opacity: 0.5;
+        }
+        .player-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .main-cover-container {
+            flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .main-cover {
+            width: 100%; max-width: 320px; aspect-ratio: 1; border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2); object-fit: cover;
+        }
         
-        /* Плеер */
-        #player-modal { position: fixed; inset: 0; background: linear-gradient(to bottom, #222, #000); z-index: 1500; display: none; flex-direction: column; align-items: center; padding: 40px 25px; }
-        .player-img { width: 100%; max-width: 300px; aspect-ratio: 1; border-radius: 15px; object-fit: cover; margin-top: 20px; }
-        .lyrics-box { height: 200px; overflow-y: auto; margin: 20px 0; text-align: center; width: 100%; scroll-behavior: smooth; }
-        .lyrics-box::-webkit-scrollbar { display: none; }
-        .lyric-line { font-size: 18px; color: #555; padding: 10px 0; transition: 0.3s; }
-        .lyric-line.active { color: #fff; font-weight: bold; transform: scale(1.1); }
-        
-        .btn { background: var(--primary); color: #000; border: none; padding: 14px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 10px; }
+        .track-desc { padding: 0 30px; display: flex; align-items: center; justify-content: space-between; }
+        .track-desc h2 { margin: 0; font-size: 22px; }
+        .track-desc p { margin: 5px 0 0; color: var(--subtext); }
+
+        .controls { padding: 30px; }
+        .progress-container { margin-bottom: 20px; }
+        .progress-bar {
+            width: 100%; height: 4px; background: rgba(0,0,0,0.1); border-radius: 2px; position: relative;
+        }
+        .progress-fill { height: 100%; background: #000; width: 0%; border-radius: 2px; }
+        .time-info { display: flex; justify-content: space-between; font-size: 12px; margin-top: 8px; color: var(--subtext); }
+
+        .main-btns { display: flex; justify-content: space-around; align-items: center; }
+        .btn-circle {
+            width: 70px; height: 70px; background: #000; color: #fff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 30px; border: none;
+        }
+        .btn-icon { background: none; border: none; font-size: 24px; color: #000; opacity: 0.8; }
+
+        /* Текст песен */
+        #lyrics-screen {
+            position: absolute; inset: 0; background: inherit; display: none;
+            padding: 60px 30px; text-align: left; overflow-y: auto; z-index: 10;
+        }
+        .lyric-line {
+            font-size: 28px; font-weight: 700; color: rgba(0,0,0,0.2); margin: 20px 0; transition: 0.3s;
+        }
+        .lyric-line.active { color: #000; transform: scale(1.05); }
+
+        /* Нижнее меню */
+        .bottom-nav {
+            position: fixed; bottom: 0; width: 100%; background: var(--glass);
+            backdrop-filter: blur(15px); display: flex; justify-content: space-around;
+            padding: 15px 0 25px; border-top: 1px solid rgba(0,0,0,0.05); z-index: 800;
+        }
+        .nav-item { text-align: center; font-size: 22px; color: var(--subtext); cursor: pointer; }
+        .nav-item.active { color: #000; }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
-        <div class="auth-box">
-            <h2>M-Flow Music</h2>
-            <input type="text" id="login-user" placeholder="Ваш логин">
-            <input type="password" id="login-pass" placeholder="Пароль">
-            <button class="btn" onclick="handleAuth()">Войти / Создать</button>
+        <div class="auth-card">
+            <h1>Music Flow</h1>
+            <input type="text" id="auth-user" class="auth-input" placeholder="Логин">
+            <input type="password" id="auth-pass" class="auth-input" placeholder="Пароль">
+            <button class="btn-main" onclick="login()">Войти</button>
         </div>
     </div>
 
-    <div id="page-home" class="page active">
-        <input type="text" id="search-input" placeholder="Поиск по названию или артисту..." oninput="search()">
-        <div id="track-list"></div>
+    <header>
+        <div class="tabs">
+            <div class="tab">Итоги года</div>
+            <div class="tab active">Для вас</div>
+            <div class="tab">Тренды</div>
+        </div>
+        <div style="font-size: 20px;">🔍</div>
+    </header>
+
+    <div class="content" id="home-content">
+        <div class="horizontal-scroll">
+            <div class="playlist-card">
+                <img src="https://img.freepik.com/free-photo/glowing-lines-human-heart-shape-dark-background-generative-ai_191095-629.jpg">
+                <div>Мне нравится</div>
+                <small id="fav-count">0 треков</small>
+            </div>
+            <div class="playlist-card">
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR3y6kI9S7tH1m_p7e5M8pM5vXm9k7p1L-SgQ&s">
+                <div>История</div>
+                <small>Недавние</small>
+            </div>
+        </div>
+
+        <div class="section-title">Артист рекомендует</div>
+        <div class="artist-banner">
+            <img src="https://avatars.yandex.net/get-music-content/9833830/92042f05.a.26240032-1/m1000x1000">
+            <div class="banner-info">
+                <h3 style="margin:0; font-size:24px;">Русь</h3>
+                <p style="margin:0; opacity:0.8;">Пропаганда</p>
+                <button class="btn-play-banner">▶ Слушать</button>
+            </div>
+        </div>
+
+        <div class="section-title">Ваша подборка</div>
+        <div id="track-list">
+            </div>
     </div>
 
-    <div id="page-upload" class="page">
-        <h2>Добавить музыку</h2>
-        <input type="text" id="up-title" placeholder="Название песни">
-        <input type="text" id="up-artist" placeholder="Исполнитель">
-        <input type="text" id="up-cover" placeholder="Ссылка на фото (URL)">
-        <input type="text" id="up-audio" placeholder="Ссылка на MP3 (URL)">
-        <textarea id="up-lyrics" rows="5" placeholder="0|Интро...&#10;15|Первая строка текста"></textarea>
-        <button class="btn" onclick="saveToFirebase()">Опубликовать трек</button>
+    <div id="mini-player" onclick="toggleFullPlayer(true)">
+        <img id="mini-img" src="">
+        <div class="mini-info">
+            <b id="mini-title">Песня</b>
+            <span id="mini-artist">Артист</span>
+        </div>
+        <div style="font-size: 24px; margin-right: 15px;">❤️</div>
+        <div id="mini-play-btn" style="font-size: 28px;">▶</div>
     </div>
 
-    <div id="page-profile" class="page">
-        <h2>Мой профиль</h2>
-        <p>Логин: <b id="display-name"></b></p>
-        <p>Статус: <span id="premium-status">Обычный</span></p>
-        <button class="btn" style="background: #333; color: white;" onclick="auth.signOut()">Выйти</button>
+    <div id="full-player">
+        <div class="player-bg" id="p-blur-bg"></div>
+        <div class="player-header">
+            <span onclick="toggleFullPlayer(false)" style="font-size: 24px;">⌄</span>
+            <div style="text-align:center; font-size: 12px; font-weight: 600;">
+                <span style="opacity:0.5">Сейчас играет</span><br>
+                Плейлист «Мне нравится»
+            </div>
+            <span style="font-size: 24px;">⋮</span>
+        </div>
+
+        <div class="main-cover-container" id="cover-view">
+            <img id="p-main-img" class="main-cover" src="">
+        </div>
+
+        <div id="lyrics-screen"></div>
+
+        <div class="track-desc">
+            <div>
+                <h2 id="p-main-title">Название</h2>
+                <p id="p-main-artist">Артист</p>
+            </div>
+            <div style="font-size: 28px; display: flex; gap: 20px;">
+                <span style="opacity: 0.6;">📤</span>
+                <span>⋮</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="progress-container">
+                <div class="progress-bar" onclick="seek(event)">
+                    <div class="progress-fill" id="p-fill"></div>
+                </div>
+                <div class="time-info">
+                    <span id="time-cur">0:00</span>
+                    <span id="time-dur">0:00</span>
+                </div>
+            </div>
+
+            <div class="main-btns">
+                <button class="btn-icon">🚫</button>
+                <button class="btn-icon">⏮</button>
+                <button class="btn-circle" id="p-play-btn" onclick="togglePlay()">II</button>
+                <button class="btn-icon">⏭</button>
+                <button class="btn-icon">❤️</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-around; margin-top: 40px; opacity: 0.5; font-size: 20px;">
+                <span>🔁</span>
+                <span>🎚️</span>
+                <span onclick="toggleLyrics()">🎤</span>
+                <span>⏰</span>
+                <span>🔀</span>
+            </div>
+        </div>
     </div>
 
-    <div id="player-modal">
-        <button onclick="closePlayer()" style="align-self: flex-start; background: none; color: white; border: none; font-size: 30px;">✕</button>
-        <img id="p-img" class="player-img" src="">
-        <div id="p-lyrics" class="lyrics-box"></div>
-        <h2 id="p-title" style="margin-bottom: 5px;"></h2>
-        <p id="p-artist" style="color: var(--grey); margin-top: 0;"></p>
-        <button id="dl-btn" class="btn" style="display:none; background: #222; color: white;" onclick="downloadSong()">📥 Скачать MP3</button>
-        <audio id="audio-player" controls style="width: 100%; margin-top: auto;"></audio>
-    </div>
-
-    <div class="nav">
-        <div class="nav-btn active" onclick="showPage('page-home', this)">🏠<br>Главная</div>
-        <div class="nav-btn" onclick="showPage('page-upload', this)">➕<br>Создать</div>
-        <div class="nav-btn" onclick="showPage('page-profile', this)">👤<br>Профиль</div>
+    <div class="bottom-nav">
+        <div class="nav-item active">🎵</div>
+        <div class="nav-item">📖</div>
+        <div class="nav-item" onclick="openUpload()">📤</div> <div class="nav-item">👤</div>
     </div>
 
     <script>
+        // ТВОИ ДАННЫЕ FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyBXsLSl_6HNpLm3TqPTjkTRqo62gb2j968",
             authDomain: "m-flow-65777.firebaseapp.com",
@@ -107,123 +286,147 @@
 
         let allTracks = [];
         let currentTrack = null;
-        let isPremium = false;
+        const audio = new Audio();
 
-        // Авторизация
-        async function handleAuth() {
-            const user = document.getElementById('login-user').value.toLowerCase().trim();
-            const pass = document.getElementById('login-pass').value;
+        // 1. Вход
+        async function login() {
+            const user = document.getElementById('auth-user').value.toLowerCase().trim();
+            const pass = document.getElementById('auth-pass').value;
             const email = `${user}@mflow.app`;
             try {
                 await auth.signInWithEmailAndPassword(email, pass);
             } catch {
                 try {
-                    const res = await auth.createUserWithEmailAndPassword(email, pass);
-                    await db.collection('users').doc(res.user.uid).set({ username: user, premium: false });
-                } catch(e) { alert("Пароль минимум 6 знаков"); }
+                    await auth.createUserWithEmailAndPassword(email, pass);
+                    await db.collection('users').doc(auth.currentUser.uid).set({ username: user, premium: false });
+                } catch(e) { alert("Ошибка входа"); }
             }
         }
 
-        auth.onAuthStateChanged(async user => {
+        auth.onAuthStateChanged(user => {
             if(user) {
                 document.getElementById('auth-screen').style.display = 'none';
-                const doc = await db.collection('users').doc(user.uid).get();
-                const data = doc.data();
-                document.getElementById('display-name').innerText = data.username;
-                isPremium = data.premium;
-                document.getElementById('premium-status').innerText = isPremium ? "Premium 💎" : "Обычный";
                 loadTracks();
             } else {
                 document.getElementById('auth-screen').style.display = 'flex';
             }
         });
 
-        // Добавление трека (Только ссылки)
-        async function saveToFirebase() {
-            const title = document.getElementById('up-title').value;
-            const artist = document.getElementById('up-artist').value;
-            const cover = document.getElementById('up-cover').value;
-            const audio = document.getElementById('up-audio').value;
-            const lyricsRaw = document.getElementById('up-lyrics').value;
-
-            if(!title || !cover || !audio) return alert("Заполни поля ссылками!");
-
-            const lyrics = lyricsRaw.split('\n').filter(l => l.includes('|')).map(l => {
-                const [t, txt] = l.split('|');
-                return { t: parseInt(t), txt: txt.trim() };
-            });
-
-            await db.collection('tracks').add({ title, artist, cover, audio, lyrics, createdAt: Date.now() });
-            alert("Трек добавлен!");
-            location.reload();
-        }
-
-        // Загрузка и рендер
+        // 2. Загрузка треков
         async function loadTracks() {
-            const snap = await db.collection('tracks').orderBy('createdAt', 'desc').get();
+            const snap = await db.collection('tracks').get();
             allTracks = snap.docs.map(doc => doc.data());
-            render(allTracks);
+            document.getElementById('fav-count').innerText = `${allTracks.length} треков`;
+            renderTracks();
         }
 
-        function render(arr) {
-            document.getElementById('track-list').innerHTML = arr.map(t => `
-                <div class="track-item" onclick='openPlayer(${JSON.stringify(t)})'>
+        function renderTracks() {
+            const container = document.getElementById('track-list');
+            container.innerHTML = allTracks.map(t => `
+                <div class="track-item" onclick='playTrack(${JSON.stringify(t)})'>
                     <img src="${t.cover}">
-                    <div><b>${t.title}</b><br><small style="color:#888">${t.artist}</small></div>
+                    <div style="flex:1">
+                        <b>${t.title}</b><br>
+                        <small style="color:#8e8e93">${t.artist}</small>
+                    </div>
+                    <div style="opacity:0.3">⋮</div>
                 </div>
             `).join('');
         }
 
-        function search() {
-            const q = document.getElementById('search-input').value.toLowerCase();
-            render(allTracks.filter(t => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)));
-        }
-
-        // Плеер
-        const player = document.getElementById('audio-player');
-
-        function openPlayer(t) {
+        // 3. Плеер Логика
+        function playTrack(t) {
             currentTrack = t;
-            document.getElementById('player-modal').style.display = 'flex';
-            document.getElementById('p-title').innerText = t.title;
-            document.getElementById('p-artist').innerText = t.artist;
-            document.getElementById('p-img').src = t.cover;
-            document.getElementById('dl-btn').style.display = isPremium ? 'block' : 'none';
-            player.src = t.audio;
-            player.play();
+            
+            // Интерфейс
+            document.getElementById('mini-player').style.display = 'flex';
+            document.getElementById('mini-title').innerText = t.title;
+            document.getElementById('mini-artist').innerText = t.artist;
+            document.getElementById('mini-img').src = t.cover;
 
-            document.getElementById('p-lyrics').innerHTML = t.lyrics.map(l => `<div class="lyric-line">${l.txt}</div>`).join('');
+            document.getElementById('p-main-title').innerText = t.title;
+            document.getElementById('p-main-artist').innerText = t.artist;
+            document.getElementById('p-main-img').src = t.cover;
+            document.getElementById('p-blur-bg').style.backgroundImage = `url(${t.cover})`;
+
+            // Музыка
+            audio.src = fixGDrive(t.audio);
+            audio.play();
+            document.getElementById('p-play-btn').innerText = 'II';
+
+            // Текст
+            const lyriCont = document.getElementById('lyrics-screen');
+            lyriCont.innerHTML = t.lyrics.map(l => `<div class="lyric-line">${l.txt}</div>`).join('');
         }
 
-        player.ontimeupdate = () => {
-            const time = Math.floor(player.currentTime);
-            const lines = document.querySelectorAll('.lyric-line');
-            currentTrack.lyrics.forEach((l, i) => {
-                if(time >= l.t) {
-                    lines.forEach(el => el.classList.remove('active'));
-                    lines[i].classList.add('active');
-                    lines[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            });
+        function fixGDrive(url) {
+            if (url.includes('drive.google.com')) {
+                const id = url.split('/d/')[1]?.split('/')[0] || url.split('id=')[1];
+                return `https://docs.google.com/uc?export=download&id=${id}`;
+            }
+            return url;
+        }
+
+        function togglePlay() {
+            if(audio.paused) { audio.play(); document.getElementById('p-play-btn').innerText = 'II'; }
+            else { audio.pause(); document.getElementById('p-play-btn').innerText = '▶'; }
+        }
+
+        audio.ontimeupdate = () => {
+            const p = (audio.currentTime / audio.duration) * 100;
+            document.getElementById('p-fill').style.width = p + '%';
+            document.getElementById('time-cur').innerText = formatTime(audio.currentTime);
+            document.getElementById('time-dur').innerText = formatTime(audio.duration);
+
+            // Синхронизация текста
+            if(currentTrack && currentTrack.lyrics) {
+                const lines = document.querySelectorAll('.lyric-line');
+                currentTrack.lyrics.forEach((l, i) => {
+                    if(audio.currentTime >= l.t) {
+                        lines.forEach(el => el.classList.remove('active'));
+                        lines[i].classList.add('active');
+                        if(document.getElementById('lyrics-screen').style.display === 'block') {
+                            lines[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                });
+            }
         };
 
-        async function downloadSong() {
-            const res = await fetch(currentTrack.audio);
-            const blob = await res.blob();
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `${currentTrack.title}.mp3`;
-            a.click();
+        function formatTime(s) {
+            if(isNaN(s)) return "0:00";
+            const m = Math.floor(s/60);
+            const sec = Math.floor(s%60);
+            return `${m}:${sec < 10 ? '0' : ''}${sec}`;
         }
 
-        function showPage(id, btn) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            btn.classList.add('active');
+        function toggleFullPlayer(show) {
+            const p = document.getElementById('full-player');
+            p.style.display = show ? 'flex' : 'none';
         }
 
-        function closePlayer() { document.getElementById('player-modal').style.display = 'none'; player.pause(); }
+        function toggleLyrics() {
+            const l = document.getElementById('lyrics-screen');
+            const c = document.getElementById('cover-view');
+            if(l.style.display === 'block') { l.style.display = 'none'; c.style.opacity = '1'; }
+            else { l.style.display = 'block'; c.style.opacity = '0'; }
+        }
+
+        function openUpload() {
+            const title = prompt("Название песни:");
+            const artist = prompt("Исполнитель:");
+            const cover = prompt("Ссылка на обложку (URL):");
+            const audioUrl = prompt("Ссылка на MP3 (Google Drive или прямая):");
+            const lyrics = prompt("Текст (формат: сек|текст через запятую или просто текст)");
+            
+            if(title && audioUrl) {
+                db.collection('tracks').add({
+                    title, artist, cover, audio: audioUrl,
+                    lyrics: [{t: 0, txt: lyrics}],
+                    createdAt: Date.now()
+                }).then(() => location.reload());
+            }
+        }
     </script>
 </body>
 </html>
