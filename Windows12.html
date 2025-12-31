@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows 12 Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap');
+
+        :root {
+            /* --- THEME VARIABLES --- */
+            --bg-image: url('https://images.unsplash.com/photo-1477346611705-65d1883cee1e?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80');
+            --system-font: 'Segoe UI', system-ui, sans-serif;
+            
+            /* Dark Theme (Default) */
+            --glass-base: 32, 32, 32;
+            --glass-opacity: 0.75;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --win-bg: #202020;
+            --win-header: #2d2d2d;
+            --text-main: #ffffff;
+            --text-sec: #a0a0a0;
+            --accent: #3b82f6;
+            --hover-bg: rgba(255, 255, 255, 0.1);
+            --selection-bg: rgba(59, 130, 246, 0.3);
+            --selection-border: rgba(59, 130, 246, 0.6);
+            --taskbar-bg: rgba(20, 20, 20, 0.85);
+        }
+
+        body.light-theme {
+            --glass-base: 255, 255, 255;
+            --glass-opacity: 0.85;
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --win-bg: #ffffff;
+            --win-header: #f3f3f3;
+            --text-main: #000000;
+            --text-sec: #555555;
+            --accent: #2563eb;
+            --hover-bg: rgba(0, 0, 0, 0.05);
+            --selection-bg: rgba(37, 99, 235, 0.2);
+            --selection-border: rgba(37, 99, 235, 0.5);
+            --taskbar-bg: rgba(245, 245, 245, 0.85);
+        }
+
+        body {
+            font-family: var(--system-font);
+            color: var(--text-main);
+            overflow: hidden;
+            user-select: none;
+            cursor: default;
+            background-color: #000;
+        }
+
+        /* --- GLASSMORPHISM UTILS --- */
+        .glass {
+            background: rgba(var(--glass-base), var(--glass-opacity));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            transition: background 0.3s, border-color 0.3s, color 0.3s;
+        }
+        
+        .glass-panel {
+            background: rgba(var(--glass-base), 0.95);
+            backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+        }
+
+        /* --- DESKTOP --- */
+        #desktop {
+            background-image: var(--bg-image);
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.5s ease-in-out;
+            z-index: 0;
+        }
+
+        .d-icon {
+            width: 86px;
+            height: 100px;
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            z-index: 10;
+        }
+        .d-icon:hover { background: var(--hover-bg); }
+        .d-icon.selected {
+            background: var(--selection-bg);
+            border-color: var(--selection-border);
+        }
+        .d-icon img {
+            width: 48px; height: 48px;
+            margin-bottom: 4px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+            pointer-events: none;
+        }
+        .d-icon span {
+            font-size: 12px;
+            text-align: center;
+            line-height: 1.2;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            color: white;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            pointer-events: none;
+            word-break: break-word;
+        }
+
+        /* --- WINDOWS --- */
+        .window-frame {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            background: var(--win-bg);
+            border-radius: 8px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            opacity: 0;
+            transform: scale(0.95);
+            animation: winOpen 0.25s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+        }
+        @keyframes winOpen { to { opacity: 1; transform: scale(1); } }
+        
+        .window-frame.closing {
+            animation: winClose 0.2s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+        }
+        @keyframes winClose { to { opacity: 0; transform: scale(0.95); } }
+
+        .title-bar {
+            height: 36px;
+            background: var(--win-header);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 12px;
+            user-select: none;
+        }
+        
+        .win-btn {
+            width: 46px; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; transition: 0.2s;
+        }
+        .win-btn:hover { background: var(--hover-bg); }
+        .win-btn.close-btn:hover { background: #e81123; color: white; }
+
+        /* --- TASKBAR & TRAY --- */
+        #taskbar-container {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 0;
+            z-index: 9000;
+            display: flex; justify-content: center;
+        }
+        
+        #dock {
+            position: fixed; bottom: 12px;
+            height: 52px;
+            background: var(--taskbar-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            display: flex; align-items: center;
+            padding: 0 6px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            backdrop-filter: blur(20px);
+            transform: translateY(0);
+            transition: transform 0.3s;
+        }
+
+        #tray {
+            position: fixed; bottom: 12px; right: 12px;
+            height: 52px;
+            background: var(--taskbar-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            display: flex; align-items: center;
+            padding: 0 12px;
+            gap: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            backdrop-filter: blur(20px);
+            z-index: 9001;
+        }
+
+        .tb-icon {
+            width: 40px; height: 40px;
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .tb-icon:hover { background: rgba(255,255,255,0.1); }
+        .tb-icon:active { transform: scale(0.9); }
+        .tb-icon.open::after {
+            content: ''; position: absolute; bottom: -4px;
+            width: 6px; height: 3px; background: var(--text-sec); border-radius: 2px;
+            transition: width 0.3s;
+        }
+        .tb-icon.active::after { width: 16px; background: var(--accent); }
+        .tb-icon img { width: 26px; height: 26px; transition: 0.2s; }
+        .tb-icon:hover img { transform: translateY(-2px); }
+
+        /* --- START MENU --- */
+        #start-menu {
+            position: fixed; bottom: 76px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            width: 640px; height: 680px;
+            background: var(--win-bg); /* Opaque for readability */
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column;
+            z-index: 8000;
+            opacity: 0; pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        #start-menu.open { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+
+        /* --- CONTEXT MENU --- */
+        #ctx-menu {
+            position: fixed; z-index: 10000;
+            width: 220px;
+            background: var(--win-bg);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 6px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            display: none; flex-direction: column;
+            opacity: 0; transform: scale(0.95);
+            animation: ctxFade 0.1s ease forwards;
+        }
+        @keyframes ctxFade { to { opacity: 1; transform: scale(1); } }
+        
+        .ctx-item {
+            padding: 8px 12px; border-radius: 4px;
+            cursor: pointer; display: flex; align-items: center; gap: 10px;
+            font-size: 13px; color: var(--text-main);
+        }
+        .ctx-item:hover { background: var(--accent); color: white; }
+        .ctx-sep { height: 1px; background: var(--glass-border); margin: 4px 0; }
+
+        /* --- SELECTION BOX --- */
+        #selection {
+            position: fixed; border: 1px solid var(--selection-border);
+            background: var(--selection-bg); display: none; z-index: 9900; pointer-events: none;
+        }
+
+        /* --- BOOT ANIMATION --- */
+        #boot {
+            position: fixed; inset: 0; background: black; z-index: 20000;
+            display: flex; flex-col; align-items: center; justify-content: center;
+            color: white; transition: opacity 1s;
+        }
+        .loader {
+            width: 48px; height: 48px;
+            border: 4px solid #333;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- CUSTOM SCROLL --- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.4); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.6); }
+
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden text-sm" oncontextmenu="return false">
+
+    <!-- BOOT SCREEN -->
+    <div id="boot">
+        <div class="flex flex-col items-center gap-8">
+            <img src="https://img.icons8.com/fluency/96/windows-11.png" width="80">
+            <div class="loader"></div>
+        </div>
+    </div>
+
+    <!-- DESKTOP ICONS LAYER -->
+    <!-- Note: z-0 -->
+    <div id="desktop" class="absolute inset-0" 
+         onmousedown="Desktop.handleMouseDown(event)"
+         oncontextmenu="ContextMenu.show(event, null)">
+         <!-- Icons injected via JS -->
+    </div>
+
+    <!-- SELECTION RECT -->
+    <div id="selection"></div>
+
+    <!-- WINDOWS CONTAINER -->
+    <!-- Note: pointer-events-none so clicks pass through to desktop where empty -->
+    <div id="windows-container" class="absolute inset-0 pointer-events-none z-50"></div>
+
+    <!-- START MENU -->
+    <div id="start-menu" class="glass-panel text-[var(--text-main)]" onclick="event.stopPropagation()">
+        <!-- Search -->
+        <div class="p-6 pb-2">
+            <div class="relative">
+                <input type="text" placeholder="Поиск приложений, файлов и настроек" 
+                       class="w-full h-10 pl-10 pr-4 rounded-full border bg-[rgba(128,128,128,0.1)] border-transparent focus:border-[var(--accent)] focus:bg-[var(--win-bg)] focus:outline-none transition-all text-sm">
+                <svg class="w-4 h-4 absolute left-3.5 top-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+        </div>
+
+        <!-- Pinned -->
+        <div class="px-8 py-2 flex-1 overflow-auto">
+            <div class="flex justify-between items-center mb-4">
+                <span class="font-semibold opacity-90">Закрепленные</span>
+                <button class="text-xs bg-[var(--hover-bg)] px-3 py-1 rounded">Все</button>
+            </div>
+            <div class="grid grid-cols-6 gap-4" id="start-pinned"></div>
+            
+            <div class="mt-6 mb-4 font-semibold opacity-90">Рекомендуем</div>
+            <div class="grid grid-cols-2 gap-2" id="start-rec"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="h-16 border-t border-[var(--glass-border)] bg-[rgba(0,0,0,0.02)] flex items-center justify-between px-8 rounded-b-xl">
+            <div class="flex items-center gap-3 hover:bg-[var(--hover-bg)] p-2 rounded cursor-pointer transition">
+                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">U</div>
+                <span class="font-medium">User</span>
+            </div>
+            <div class="p-2 hover:bg-[var(--hover-bg)] rounded cursor-pointer transition" onclick="location.reload()">
+                <img src="https://img.icons8.com/ios-glyphs/30/ffffff/shutdown.png" class="w-5 h-5 opacity-80 filter invert dark:invert-0">
+            </div>
+        </div>
+    </div>
+
+    <!-- DOCK (CENTERED) -->
+    <div id="dock">
+        <div class="tb-icon" onclick="StartMenu.toggle()" title="Пуск">
+            <img src="https://img.icons8.com/fluency/96/windows-11.png">
+        </div>
+        <div class="h-6 w-[1px] bg-[var(--glass-border)] mx-1"></div>
+        <div id="dock-apps" class="flex"></div>
+    </div>
+
+    <!-- SYSTEM TRAY (RIGHT) -->
+    <div id="tray" onclick="System.toggleTheme()">
+        <div class="flex flex-col items-end justify-center cursor-pointer">
+            <div id="clock-time" class="text-xs font-medium text-[var(--text-main)]">12:00</div>
+            <div id="clock-date" class="text-[10px] text-[var(--text-sec)]">01.01.2025</div>
+        </div>
+        <div class="flex gap-2">
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/wifi.png" class="w-4 h-4 opacity-80 filter invert dark:invert-0">
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/speaker.png" class="w-4 h-4 opacity-80 filter invert dark:invert-0">
+        </div>
+    </div>
+
+    <!-- CONTEXT MENU -->
+    <div id="ctx-menu"></div>
+
+    <script>
+        // --- CONSTANTS & DATA ---
+        const ICONS = {
+            pc: 'https://img.icons8.com/color/96/monitor--v1.png',
+            trash: 'https://img.icons8.com/color/96/trash--v1.png',
+            trash_full: 'https://img.icons8.com/color/96/full-trash.png',
+            folder: 'https://img.icons8.com/color/96/folder-invoices--v1.png',
+            file: 'https://img.icons8.com/color/96/txt.png',
+            settings: 'https://img.icons8.com/fluency/96/settings.png',
+            calc: 'https://img.icons8.com/color/96/calculator--v1.png',
+            notepad: 'https://img.icons8.com/color/96/notepad.png',
+            explorer: 'https://img.icons8.com/color/96/folder-invoices--v1.png',
+            edge: 'https://img.icons8.com/color/96/microsoft-edge.png',
+            store: 'https://img.icons8.com/color/96/microsoft-store.png',
+            word: 'https://img.icons8.com/color/96/microsoft-word-2019--v2.png',
+            excel: 'https://img.icons8.com/color/96/microsoft-excel-2019--v1.png',
+            vscode: 'https://img.icons8.com/fluency/96/visual-studio-code-2019.png',
+            term: 'https://img.icons8.com/fluency/96/console.png'
+        };
+
+        // --- VIRTUAL FILE SYSTEM ---
+        const VFS = {
+            files: [
+                { id: 'pc', name: 'Этот компьютер', type: 'sys', icon: ICONS.pc, pid: 'desktop' },
+                { id: 'trash', name: 'Корзина', type: 'sys', icon: ICONS.trash, pid: 'desktop' },
+                { id: 'f1', name: 'Проекты', type: 'folder', icon: ICONS.folder, pid: 'desktop' },
+                { id: 'd1', name: 'Заметки.txt', type: 'file', icon: ICONS.file, pid: 'desktop', content: 'Привет, мир!\nЭто Windows 12 Concept.' }
+            ],
+            pos: {}, // {id: {x, y}}
+
+            get(id) { return this.files.find(f => f.id === id); },
+            
+            getChildren(pid) { return this.files.filter(f => f.pid === pid); },
+
+            create(name, type, pid = 'desktop', content = '') {
+                const id = 'f_' + Date.now();
+                const icon = type === 'folder' ? ICONS.folder : ICONS.file;
+                const file = { id, name, type, icon, pid, content };
+                this.files.push(file);
+                
+                if(pid === 'desktop') {
+                    this.pos[id] = Desktop.findFreeSlot();
+                    Desktop.render();
+                }
+                return file;
+            },
+
+            trash(id) {
+                const f = this.get(id);
+                if(!f || f.type === 'sys') return;
+                
+                // If it's a folder, recursively trash children? (Simplified: Just trash the item)
+                f.prevPid = f.pid;
+                f.pid = 'trash';
+                delete this.pos[id]; // Remove from desktop grid
+                
+                this.updateTrashIcon();
+                Desktop.render();
+                WindowManager.broadcast('fs-update');
+            },
+
+            restore(id) {
+                const f = this.get(id);
+                if(!f || f.pid !== 'trash') return;
+                
+                f.pid = f.prevPid || 'desktop';
+                if(f.pid === 'desktop') this.pos[id] = Desktop.findFreeSlot();
+                
+                this.updateTrashIcon();
+                Desktop.render();
+                WindowManager.broadcast('fs-update');
+            },
+
+            emptyTrash() {
+                this.files = this.files.filter(f => f.pid !== 'trash');
+                this.updateTrashIcon();
+                Desktop.render();
+                WindowManager.broadcast('fs-update');
+            },
+
+            updateTrashIcon() {
+                const hasItems = this.files.some(f => f.pid === 'trash');
+                const t = this.get('trash');
+                if(t) t.icon = hasItems ? ICONS.trash_full : ICONS.trash;
+            },
+
+            updateContent(id, text) {
+                const f = this.get(id);
+                if(f) f.content = text;
+            }
+        };
+
+        // --- DESKTOP CONTROLLER ---
+        const Desktop = {
+            el: document.getElementById('desktop'),
+            selected: new Set(),
+            
+            init() {
+                // Set initial positions
+                VFS.pos['pc'] = {x: 10, y: 10};
+                VFS.pos['trash'] = {x: 10, y: 120};
+                VFS.pos['f1'] = {x: 106, y: 10};
+                VFS.pos['d1'] = {x: 106, y: 120};
+                
+                this.render();
+                window.addEventListener('resize', () => this.render());
+            },
+
+            findFreeSlot() {
+                const w = 96, h = 110; // Grid cell size
+                const cols = Math.floor(window.innerHeight / h);
+                let i = 0;
+                while(true) {
+                    const c = Math.floor(i / cols);
+                    const r = i % cols;
+                    const x = 10 + c * w;
+                    const y = 10 + r * h;
+                    
+                    // Collision check
+                    const busy = Object.values(VFS.pos).some(p => Math.abs(p.x - x) < 10 && Math.abs(p.y - y) < 10);
+                    if(!busy) return {x, y};
+                    i++;
+                }
+            },
+
+            render() {
+                this.el.innerHTML = '';
+                const items = VFS.getChildren('desktop');
+                
+                items.forEach(item => {
+                    const pos = VFS.pos[item.id] || this.findFreeSlot();
+                    VFS.pos[item.id] = pos; // Ensure saved
+
+                    const div = document.createElement('div');
+                    div.className = 'd-icon';
+                    if(this.selected.has(item.id)) div.classList.add('selected');
+                    div.style.left = pos.x + 'px';
+                    div.style.top = pos.y + 'px';
+                    div.dataset.id = item.id;
+                    
+                    div.innerHTML = `<img src="${item.icon}"><span>${item.name}</span>`;
+                    
+                    // Events
+                    div.onmousedown = (e) => this.onIconDown(e, item.id);
+                    div.ondblclick = (e) => { e.stopPropagation(); Apps.openItem(item.id); };
+                    div.oncontextmenu = (e) => { e.stopPropagation(); ContextMenu.show(e, item.id); };
+                    
+                    this.el.appendChild(div);
+                });
+            },
+
+            onIconDown(e, id) {
+                if(e.button !== 0) return; // Only Left Click
+                e.stopPropagation();
+
+                if(e.ctrlKey) {
+                    if(this.selected.has(id)) this.selected.delete(id);
+                    else this.selected.add(id);
+                } else {
+                    if(!this.selected.has(id)) {
+                        this.selected.clear();
+                        this.selected.add(id);
+                    }
+                }
+                this.render();
+                
+                // Init Drag
+                DragDrop.start(e);
+            },
+
+            handleMouseDown(e) {
+                if(e.target === this.el) {
+                    this.selected.clear();
+                    this.render();
+                    ContextMenu.hide();
+                    StartMenu.close();
+                    SelectionBox.init(e);
+                }
+            }
+        };
+
+        // --- WINDOW MANAGER ---
+        const WindowManager = {
+            container: document.getElementById('windows-container'),
+            wins: [],
+            zIndex: 100,
+
+            open(appId, args = {}) {
+                // Singleton check for some apps
+                if(['settings', 'calc'].includes(appId)) {
+                    const exist = this.wins.find(w => w.appId === appId);
+                    if(exist) return this.focus(exist.id);
+                }
+
+                this.zIndex++;
+                const id = 'w_' + Date.now();
+                const app = Apps.defs[appId];
+                
+                const win = document.createElement('div');
+                win.id = id;
+                win.className = 'window-frame glass pointer-events-auto';
+                win.style.zIndex = this.zIndex;
+                win.style.width = (app.w || 600) + 'px';
+                win.style.height = (app.h || 400) + 'px';
+                // Center
+                win.style.left = Math.max(0, (window.innerWidth - (app.w || 600))/2 + (this.wins.length*20)) + 'px';
+                win.style.top = Math.max(0, (window.innerHeight - (app.h || 400))/2 + (this.wins.length*20)) + 'px';
+
+                win.innerHTML = `
+                    <div class="title-bar" onmousedown="WindowManager.dragStart(event, '${id}')">
+                        <div class="flex items-center gap-2 pointer-events-none">
+                            <img src="${app.icon}" class="w-4 h-4">
+                            <span class="text-xs font-semibold opacity-80">${args.title || app.title}</span>
+                        </div>
+                        <div class="flex h-full">
+                            <div class="win-btn" onclick="WindowManager.minimize('${id}')">─</div>
+                            <div class="win-btn" onclick="WindowManager.maximize('${id}')">◻</div>
+                            <div class="win-btn close-btn" onclick="WindowManager.close('${id}')">✕</div>
+                        </div>
+                    </div>
+                    <div class="flex-1 relative overflow-hidden flex flex-col" onmousedown="WindowManager.focus('${id}')">
+                        ${app.render(id, args)}
+                    </div>
+                `;
+
+                this.container.appendChild(win);
+                this.wins.push({ id, appId, el: win, minimized: false, maximized: false, app });
+                Taskbar.add(id, appId);
+                
+                if(app.init) setTimeout(() => app.init(id, args), 0);
+            },
+
+            close(id) {
+                const w = this.wins.find(x => x.id === id);
+                if(!w) return;
+                w.el.classList.add('closing');
+                setTimeout(() => {
+                    w.el.remove();
+                    this.wins = this.wins.filter(x => x.id !== id);
+                    Taskbar.remove(id);
+                }, 200);
+            },
+
+            minimize(id) {
+                const w = this.wins.find(x => x.id === id);
+                if(w) {
+                    w.minimized = true;
+                    w.el.classList.add('closing'); // Reusing fade out
+                    setTimeout(() => w.el.style.display = 'none', 200);
+                    Taskbar.update();
+                }
+            },
+
+            restore(id) {
+                const w = this.wins.find(x => x.id === id);
+                if(w) {
+                    w.minimized = false;
+                    w.el.style.display = 'flex';
+                    w.el.classList.remove('closing');
+                    this.focus(id);
+                    Taskbar.update();
+                }
+            },
+
+            toggle(id) {
+                const w = this.wins.find(x => x.id === id);
+                if(w.minimized) this.restore(id);
+                else if(parseInt(w.el.style.zIndex) === this.zIndex) this.minimize(id);
+                else this.focus(id);
+            },
+
+            focus(id) {
+                const w = this.wins.find(x => x.id === id);
+                if(!w) return;
+                this.zIndex++;
+                w.el.style.zIndex = this.zIndex;
+                Taskbar.update();
+            },
+
+            maximize(id) {
+                const w = this.wins.find(x => x.id === id);
+                if(!w) return;
+                if(w.maximized) {
+                    w.el.style.width = w.prev.w; w.el.style.height = w.prev.h;
+                    w.el.style.left = w.prev.x; w.el.style.top = w.prev.y;
+                    w.el.style.borderRadius = '8px';
+                    w.maximized = false;
+                } else {
+                    w.prev = { w: w.el.style.width, h: w.el.style.height, x: w.el.style.left, y: w.el.style.top };
+                    w.el.style.width = '100%'; w.el.style.height = 'calc(100% - 52px)'; // Above dock
+                    w.el.style.left = '0'; w.el.style.top = '0';
+                    w.el.style.borderRadius = '0';
+                    w.maximized = true;
+                }
+            },
+
+            dragStart(e, id) {
+                if(e.target.closest('.win-btn')) return;
+                const w = this.wins.find(x => x.id === id);
+                if(w.maximized) return;
+                
+                this.focus(id);
+                
+                const el = w.el;
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const rect = el.getBoundingClientRect();
+                const offX = startX - rect.left;
+                const offY = startY - rect.top;
+
+                const move = (ev) => {
+                    el.style.left = (ev.clientX - offX) + 'px';
+                    el.style.top = (ev.clientY - offY) + 'px';
+                };
+                const up = () => {
+                    document.removeEventListener('mousemove', move);
+                    document.removeEventListener('mouseup', up);
+                };
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', up);
+            },
+
+            broadcast(msg) {
+                this.wins.forEach(w => {
+                    if(w.app.onMsg) w.app.onMsg(w.id, msg);
+                });
+            }
+        };
+
+        // --- APPS DEFINITIONS ---
+        const Apps = {
+            defs: {},
+            
+            register(id, def) { this.defs[id] = def; },
+            
+            openItem(id) {
+                const f = VFS.get(id);
+                if(!f) return;
+                if(f.id === 'pc' || f.type === 'folder' || f.id === 'trash') {
+                    WindowManager.open('explorer', { path: f.id === 'pc' ? 'desktop' : f.id });
+                } else if (f.type === 'file') {
+                    WindowManager.open('notepad', { fileId: id });
+                }
+            },
+
+            init() {
+                // NOTEPAD
+                this.register('notepad', {
+                    title: 'Блокнот', icon: ICONS.notepad, w: 600, h: 400,
+                    render: (wid) => `<textarea id="np_${wid}" class="w-full h-full resize-none p-4 bg-[var(--win-bg)] text-[var(--text-main)] outline-none border-none font-mono text-sm"></textarea>`,
+                    init: (wid, args) => {
+                        const el = document.getElementById('np_'+wid);
+                        if(args.fileId) {
+                            const f = VFS.get(args.fileId);
+                            el.value = f.content || '';
+                            el.oninput = () => VFS.updateContent(args.fileId, el.value);
+                            // Update Title
+                            const win = WindowManager.wins.find(w => w.id === wid);
+                            win.el.querySelector('.title-bar span').innerText = f.name + ' - Блокнот';
+                        }
+                    }
+                });
+
+                // EXPLORER
+                this.register('explorer', {
+                    title: 'Проводник', icon: ICONS.explorer, w: 700, h: 500,
+                    render: (wid, args) => `
+                        <div class="flex flex-col h-full">
+                            <div class="h-10 flex items-center px-4 border-b border-[var(--glass-border)] gap-2 bg-[var(--win-header)]">
+                                <button onclick="WindowManager.wins.find(w=>w.id=='${wid}').app.goUp('${wid}')" class="hover:bg-[var(--hover-bg)] p-1 rounded">↑</button>
+                                <div class="flex-1 bg-[var(--hover-bg)] px-2 py-1 rounded text-sm flex items-center gap-2">
+                                    <img src="${ICONS.folder}" class="w-4 h-4">
+                                    <span id="path_${wid}">...</span>
+                                </div>
+                            </div>
+                            <div id="grid_${wid}" class="flex-1 p-4 grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] grid-rows-[repeat(auto-fill,90px)] gap-2 overflow-auto content-start bg-[var(--win-bg)]"></div>
+                            <div class="h-6 border-t border-[var(--glass-border)] bg-[var(--win-header)] flex items-center px-4 text-xs opacity-70">
+                                <span id="st_${wid}">0 объектов</span>
+                            </div>
+                        </div>
+                    `,
+                    init: (wid, args) => this.refreshExplorer(wid, args.path || 'desktop'),
+                    onMsg: (wid, msg) => { if(msg === 'fs-update') Apps.refreshExplorer(wid); },
+                    goUp: (wid) => {
+                        // Simple go up logic
+                        const win = WindowManager.wins.find(w=>w.id === wid);
+                        if(win.currPath !== 'desktop') Apps.refreshExplorer(wid, 'desktop');
+                    }
+                });
+
+                // SETTINGS
+                this.register('settings', {
+                    title: 'Параметры', icon: ICONS.settings, w: 800, h: 550,
+                    render: (wid) => `
+                        <div class="flex h-full text-[var(--text-main)]">
+                            <div class="w-60 border-r border-[var(--glass-border)] bg-[var(--win-header)] p-4">
+                                <h2 class="text-lg font-bold mb-6">Параметры</h2>
+                                <div class="space-y-1">
+                                    <div class="p-2 rounded bg-[var(--accent)] text-white text-sm">Персонализация</div>
+                                    <div class="p-2 rounded hover:bg-[var(--hover-bg)] opacity-70 text-sm">Система</div>
+                                    <div class="p-2 rounded hover:bg-[var(--hover-bg)] opacity-70 text-sm">Приложения</div>
+                                </div>
+                            </div>
+                            <div class="flex-1 p-8 overflow-auto bg-[var(--win-bg)]">
+                                <h1 class="text-2xl font-semibold mb-6">Персонализация</h1>
+                                
+                                <div class="mb-8">
+                                    <h3 class="mb-3 font-medium">Выберите тему</h3>
+                                    <div class="flex gap-4">
+                                        <div onclick="System.setTheme('light')" class="flex-1 aspect-video rounded-lg border-2 border-gray-200 cursor-pointer hover:border-blue-500 relative bg-gray-100 flex items-center justify-center text-black">Светлая</div>
+                                        <div onclick="System.setTheme('dark')" class="flex-1 aspect-video rounded-lg border-2 border-gray-700 cursor-pointer hover:border-blue-500 relative bg-gray-900 flex items-center justify-center text-white">Темная</div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 class="mb-3 font-medium">Фон рабочего стола</h3>
+                                    <div class="grid grid-cols-3 gap-3">
+                                        ${[
+                                            'https://images.unsplash.com/photo-1477346611705-65d1883cee1e',
+                                            'https://images.unsplash.com/photo-1579546929518-9e396f3cc809',
+                                            'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
+                                            'https://images.unsplash.com/photo-1550684848-fac1c5b4e853',
+                                            'https://images.unsplash.com/photo-1451187580459-43490279c0fa',
+                                            'https://images.unsplash.com/photo-1501854140884-074cf2b21d25'
+                                        ].map(u => `
+                                            <div class="aspect-video rounded bg-cover cursor-pointer hover:ring-2 ring-blue-500 transition" 
+                                                 style="background-image: url('${u}?w=400')"
+                                                 onclick="document.body.style.setProperty('--bg-image', 'url(${u}?w=2070)')"></div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                });
+
+                // CALCULATOR
+                this.register('calc', {
+                    title: 'Калькулятор', icon: ICONS.calc, w: 320, h: 480,
+                    render: (wid) => `
+                        <div class="flex flex-col h-full bg-[var(--win-bg)] p-1">
+                            <div id="c_disp_${wid}" class="h-24 flex items-end justify-end text-4xl p-4 font-light overflow-hidden text-[var(--text-main)]">0</div>
+                            <div class="grid grid-cols-4 gap-1 flex-1">
+                                ${['C','DEL','%','/','7','8','9','*','4','5','6','-','1','2','3','+','0','.','='].map(k => `
+                                    <button class="rounded hover:bg-[var(--hover-bg)] text-lg font-medium transition ${k==='='?'col-span-2 bg-[var(--accent)] text-white':''} ${k==='0'?'col-span-2':''}"
+                                            onclick="Apps.calcInput('${wid}', '${k}')">${k}</button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `
+                });
+            },
+
+            refreshExplorer(wid, path) {
+                const win = WindowManager.wins.find(w => w.id === wid);
+                if(!win) return;
+                win.currPath = path;
+
+                const grid = document.getElementById('grid_'+wid);
+                const pLabel = document.getElementById('path_'+wid);
+                const sLabel = document.getElementById('st_'+wid);
+                
+                // Determine source
+                let items = [];
+                let name = '';
+                
+                if(path === 'desktop') { name = 'Рабочий стол'; items = VFS.getChildren('desktop'); }
+                else if(path === 'trash') { name = 'Корзина'; items = VFS.getChildren('trash'); }
+                else { 
+                    const f = VFS.get(path); 
+                    if(f) { name = f.name; items = VFS.getChildren(path); }
+                }
+
+                pLabel.innerText = name;
+                grid.innerHTML = '';
+                
+                if(path === 'trash' && items.length > 0) {
+                    const btn = document.createElement('button');
+                    btn.className = "col-span-full mb-2 bg-red-600 text-white py-1 px-3 rounded text-xs w-max hover:bg-red-700";
+                    btn.innerText = "Очистить корзину";
+                    btn.onclick = () => VFS.emptyTrash();
+                    grid.appendChild(btn);
+                }
+
+                if(items.length === 0) {
+                    grid.innerHTML += '<div class="col-span-full text-center opacity-50 mt-10">Папка пуста</div>';
+                }
+
+                items.forEach(f => {
+                    const el = document.createElement('div');
+                    el.className = "flex flex-col items-center p-2 hover:bg-[var(--hover-bg)] rounded cursor-default";
+                    el.innerHTML = `<img src="${f.icon}" class="w-10 h-10 mb-1"><span class="text-xs text-center line-clamp-2 text-[var(--text-main)]">${f.name}</span>`;
+                    el.ondblclick = () => Apps.openItem(f.id);
+                    el.oncontextmenu = (e) => ContextMenu.show(e, f.id);
+                    grid.appendChild(el);
+                });
+                sLabel.innerText = items.length + ' элементов';
+            },
+
+            calcInput(wid, k) {
+                const d = document.getElementById('c_disp_'+wid);
+                let v = d.innerText;
+                if(k === 'C') v = '0';
+                else if(k === 'DEL') v = v.length > 1 ? v.slice(0,-1) : '0';
+                else if(k === '=') {
+                    try { v = eval(v.replace('×','*')).toString(); } catch { v = 'Error'; }
+                } else {
+                    if(v === '0' && !isNaN(k)) v = k;
+                    else v += k;
+                }
+                d.innerText = v.slice(0, 12);
+            }
+        };
+
+        // --- TASKBAR ---
+        const Taskbar = {
+            el: document.getElementById('dock-apps'),
+            
+            add(wid, appId) {
+                const app = Apps.defs[appId];
+                const icon = document.createElement('div');
+                icon.className = 'tb-icon open active';
+                icon.id = 'tb_' + wid;
+                icon.innerHTML = `<img src="${app.icon}">`;
+                icon.onclick = () => WindowManager.toggle(wid);
+                this.el.appendChild(icon);
+            },
+            
+            remove(wid) {
+                const el = document.getElementById('tb_'+wid);
+                if(el) el.remove();
+            },
+            
+            update() {
+                WindowManager.wins.forEach(w => {
+                    const tb = document.getElementById('tb_'+w.id);
+                    if(tb) {
+                        tb.classList.toggle('active', w.el.style.zIndex == WindowManager.zIndex && !w.minimized);
+                        tb.classList.toggle('minimized', w.minimized);
+                    }
+                });
+            }
+        };
+
+        // --- CONTEXT MENU ---
+        const ContextMenu = {
+            el: document.getElementById('ctx-menu'),
+            
+            show(e, id) {
+                e.preventDefault();
+                e.stopPropagation(); // Critical fix
+                
+                let html = '';
+                const f = id ? VFS.get(id) : null;
+                
+                if(!f) {
+                    // Desktop
+                    html = `
+                        <div class="ctx-item" onclick="VFS.create('Новая папка', 'folder'); ContextMenu.hide()">
+                            <img src="${ICONS.folder}" class="w-4 h-4"> Создать папку
+                        </div>
+                        <div class="ctx-item" onclick="VFS.create('Текстовый документ', 'file'); ContextMenu.hide()">
+                            <img src="${ICONS.file}" class="w-4 h-4"> Создать документ
+                        </div>
+                        <div class="ctx-sep"></div>
+                        <div class="ctx-item" onclick="location.reload()">Обновить</div>
+                        <div class="ctx-sep"></div>
+                        <div class="ctx-item" onclick="WindowManager.open('settings'); ContextMenu.hide()">
+                            <img src="${ICONS.settings}" class="w-4 h-4"> Персонализация
+                        </div>
+                    `;
+                } else {
+                    // File/Folder
+                    html = `<div class="ctx-item" onclick="Apps.openItem('${id}'); ContextMenu.hide()"><b>Открыть</b></div>`;
+                    
+                    if(id === 'trash') {
+                        html += `<div class="ctx-item" onclick="VFS.emptyTrash(); ContextMenu.hide()">Очистить корзину</div>`;
+                    } else if (f.pid === 'trash') {
+                        html += `<div class="ctx-sep"></div><div class="ctx-item" onclick="VFS.restore('${id}'); ContextMenu.hide()">Восстановить</div>`;
+                    } else if (id !== 'pc') {
+                        html += `
+                            <div class="ctx-sep"></div>
+                            <div class="ctx-item text-red-400" onclick="VFS.trash('${id}'); ContextMenu.hide()">Удалить</div>
+                        `;
+                    }
+                }
+
+                this.el.innerHTML = html;
+                this.el.style.display = 'flex';
+                
+                let x = e.clientX, y = e.clientY;
+                if(x + 220 > window.innerWidth) x -= 220;
+                if(y + 200 > window.innerHeight) y -= 200;
+                
+                this.el.style.left = x + 'px';
+                this.el.style.top = y + 'px';
+            },
+            
+            hide() { this.el.style.display = 'none'; }
+        };
+
+        // --- DRAG AND DROP ---
+        const DragDrop = {
+            active: false,
+            
+            start(e) {
+                const startX = e.clientX, startY = e.clientY;
+                const offsets = {};
+                
+                Desktop.selected.forEach(id => {
+                    const el = document.querySelector(`.d-icon[data-id="${id}"]`);
+                    offsets[id] = {
+                        el,
+                        x: parseInt(el.style.left),
+                        y: parseInt(el.style.top)
+                    };
+                });
+                
+                let moved = false;
+
+                const move = (ev) => {
+                    if(Math.abs(ev.clientX - startX) > 5) moved = true;
+                    if(!moved) return;
+                    
+                    this.active = true;
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+                    
+                    for(let id in offsets) {
+                        const o = offsets[id];
+                        o.el.style.left = (o.x + dx) + 'px';
+                        o.el.style.top = (o.y + dy) + 'px';
+                    }
+                };
+
+                const up = (ev) => {
+                    document.removeEventListener('mousemove', move);
+                    document.removeEventListener('mouseup', up);
+                    
+                    if(!this.active) return; // Was just a click
+                    this.active = false;
+
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+
+                    Desktop.selected.forEach(id => {
+                        const o = offsets[id];
+                        // Snap
+                        const nx = Math.max(0, Math.round((o.x + dx) / 10) * 10);
+                        const ny = Math.max(0, Math.round((o.y + dy) / 10) * 10);
+                        VFS.pos[id] = {x: nx, y: ny};
+                    });
+                    Desktop.render();
+                };
+
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', up);
+            }
+        };
+
+        // --- SELECTION BOX ---
+        const SelectionBox = {
+            el: document.getElementById('selection'),
+            init(e) {
+                const sx = e.clientX, sy = e.clientY;
+                this.el.style.display = 'block';
+                this.el.style.width = '0'; this.el.style.height = '0';
+                
+                const move = (ev) => {
+                    const cx = ev.clientX, cy = ev.clientY;
+                    const x = Math.min(sx, cx), y = Math.min(sy, cy);
+                    const w = Math.abs(cx - sx), h = Math.abs(cy - sy);
+                    
+                    this.el.style.left = x + 'px'; this.el.style.top = y + 'px';
+                    this.el.style.width = w + 'px'; this.el.style.height = h + 'px';
+                    
+                    // Hit Test
+                    const sel = new Set();
+                    document.querySelectorAll('.d-icon').forEach(el => {
+                        const r = el.getBoundingClientRect();
+                        if(x < r.right && x+w > r.left && y < r.bottom && y+h > r.top) {
+                            sel.add(el.dataset.id);
+                        }
+                    });
+                    Desktop.selected = sel;
+                    // Visual update only
+                    document.querySelectorAll('.d-icon').forEach(el => {
+                        if(sel.has(el.dataset.id)) el.classList.add('selected');
+                        else el.classList.remove('selected');
+                    });
+                };
+                
+                const up = () => {
+                    this.el.style.display = 'none';
+                    document.removeEventListener('mousemove', move);
+                    document.removeEventListener('mouseup', up);
+                };
+                
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', up);
+            }
+        };
+
+        // --- START MENU & SYSTEM ---
+        const StartMenu = {
+            el: document.getElementById('start-menu'),
+            toggle() { this.el.classList.toggle('open'); },
+            close() { this.el.classList.remove('open'); },
+            init() {
+                const pins = [
+                    {n:'Edge', i:ICONS.edge, a:'edge'},
+                    {n:'Word', i:ICONS.word, a:'word'},
+                    {n:'Excel', i:ICONS.excel, a:'excel'},
+                    {n:'Store', i:ICONS.store, a:'store'},
+                    {n:'Code', i:ICONS.vscode, a:'vscode'},
+                    {n:'Блокнот', i:ICONS.notepad, a:'notepad'},
+                    {n:'Параметры', i:ICONS.settings, a:'settings'},
+                    {n:'Калькулятор', i:ICONS.calc, a:'calc'}
+                ];
+                const cont = document.getElementById('start-pinned');
+                pins.forEach(p => {
+                    const el = document.createElement('div');
+                    el.className = "flex flex-col items-center p-2 rounded hover:bg-[var(--hover-bg)] transition cursor-pointer";
+                    el.innerHTML = `<img src="${p.i}" class="w-8 h-8 mb-2"><span class="text-xs text-center">${p.n}</span>`;
+                    el.onclick = () => {
+                        if(Apps.defs[p.a]) WindowManager.open(p.a);
+                        this.close();
+                    };
+                    cont.appendChild(el);
+                });
+            }
+        };
+
+        const System = {
+            init() {
+                // Boot
+                setTimeout(() => {
+                    document.getElementById('boot').style.opacity = '0';
+                    setTimeout(() => document.getElementById('boot').remove(), 1000);
+                }, 1500);
+
+                // Clock
+                setInterval(() => {
+                    const now = new Date();
+                    document.getElementById('clock-time').innerText = now.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+                    document.getElementById('clock-date').innerText = now.toLocaleDateString('ru-RU');
+                }, 1000);
+
+                // Global Click
+                document.addEventListener('click', (e) => {
+                    if(!e.target.closest('#start-menu') && !e.target.closest('.tb-icon')) StartMenu.close();
+                    if(!e.target.closest('#ctx-menu')) ContextMenu.hide();
+                });
+            },
+            
+            toggleTheme() {
+                document.body.classList.toggle('light-theme');
+            },
+            
+            setTheme(t) {
+                if(t==='light') document.body.classList.add('light-theme');
+                else document.body.classList.remove('light-theme');
+            }
+        };
+
+        // --- INIT ---
+        Apps.init();
+        Desktop.init();
+        StartMenu.init();
+        System.init();
+
+    </script>
+</body>
+</html>
